@@ -1,0 +1,12 @@
+# Copy to terraform.tfvars and edit. terraform.tfvars is gitignored.
+
+cluster_label  = "lke-gpu-demo"
+region         = "us-sea"
+k8s_version    = "1.35"
+cpu_node_type  = "g6-standard-2"
+cpu_node_count = 2
+gpu_node_type  = "g2-gpu-rtx4000a1-m"
+gpu_node_count = 1
+
+# Only used if you uncomment the firewall block in main.tf.
+# allowed_cidr = "203.0.113.10/32"

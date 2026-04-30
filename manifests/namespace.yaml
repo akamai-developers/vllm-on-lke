@@ -1,0 +1,6 @@
+# Namespace for the LLM workload.
+# Keeping it isolated from kube-system / gpu-operator makes RBAC and cleanup easier.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: llm

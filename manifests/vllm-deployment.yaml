@@ -1,0 +1,102 @@
+# vLLM serves an OpenAI-compatible endpoint on port 8000.
+# `--api-key` enables bearer-token auth on /v1/* — no separate FastAPI shim needed.
+#
+# Scheduling:
+#   nodeSelector pool=gpu  → only land on the GPU node pool
+#   toleration nvidia.com/gpu → tolerate the taint the GPU Operator adds to GPU nodes
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vllm
+  namespace: llm
+  labels:
+    app: vllm
+spec:
+  replicas: 1
+  # Single GPU + ReadWriteOnce PVC means we can't run two pods at once.
+  # `Recreate` kills the old pod before creating the new one, which avoids
+  # ContainerCreating deadlocks during rollouts.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: vllm
+  template:
+    metadata:
+      labels:
+        app: vllm
+    spec:
+      # Disable Kubernetes' legacy service env var injection. Without this,
+      # the Service named `vllm` causes K8s to set VLLM_PORT=tcp://...:80,
+      # which vLLM misreads as its own listen-port config and crashes.
+      enableServiceLinks: false
+      nodeSelector:
+        pool: gpu
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+      containers:
+        - name: vllm
+          # Pin a specific tag in production. `:latest` is fine for a demo.
+          image: vllm/vllm-openai:latest
+          # Linux-level hardening on the workload. Container still runs as root
+          # (CUDA/GPU access wants it), but it can't escalate privileges or use
+          # extra Linux capabilities, and seccomp blocks unusual syscalls.
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+            seccompProfile:
+              type: RuntimeDefault
+          args:
+            - --model=Qwen/Qwen2.5-7B-Instruct
+            - --download-dir=/models
+            - --api-key=$(VLLM_API_KEY)
+            - --host=0.0.0.0
+            - --port=8000
+          envFrom:
+            - secretRef:
+                name: vllm-secrets
+          ports:
+            - containerPort: 8000
+              name: http
+          resources:
+            limits:
+              nvidia.com/gpu: 1
+            requests:
+              cpu: "4"
+              memory: 24Gi
+              nvidia.com/gpu: 1
+          # Model load can take several minutes on first run. Generous startupProbe
+          # so the liveness probe doesn't murder the pod mid-download.
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            failureThreshold: 60
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            periodSeconds: 30
+          volumeMounts:
+            - name: model-cache
+              mountPath: /models
+            # vLLM uses /dev/shm for tensor ops; the container default of 64Mi is too small.
+            - name: dshm
+              mountPath: /dev/shm
+      volumes:
+        - name: model-cache
+          persistentVolumeClaim:
+            claimName: model-cache
+        - name: dshm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 8Gi

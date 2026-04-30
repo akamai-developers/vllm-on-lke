@@ -216,3 +216,19 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+manifests/secret.yaml
+.env
+
+# Cluster credentials — patterns cover both `kubeconfig` (no extension)
+# and `*.kubeconfig` filenames anywhere in the tree.
+kubeconfig
+*.kubeconfig
+
+# Terraform
+terraform/.terraform/
+terraform.tfstate
+terraform.tfstate.backup
+**/terraform.tfstate
+**/terraform.tfstate.backup
+terraform/*.tfvars
+!terraform/terraform.tfvars.example

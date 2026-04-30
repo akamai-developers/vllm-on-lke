@@ -1,0 +1,43 @@
+# Tells Prometheus what to scrape. The kube-prometheus-stack helm values
+# (kube-prometheus-stack-values.yaml) set `podMonitorSelectorNilUsesHelmValues:
+# false` so these PodMonitors are picked up regardless of release labels.
+
+# Scrape vLLM's Prometheus metrics. vLLM exposes /metrics on the same port as
+# the OpenAI API (8000); /metrics is unauthenticated, so Prometheus can scrape
+# without a bearer token. The container port is named `http` in the Deployment.
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: vllm
+  namespace: monitoring
+spec:
+  namespaceSelector:
+    matchNames:
+      - llm
+  selector:
+    matchLabels:
+      app: vllm
+  podMetricsEndpoints:
+    - port: http
+      path: /metrics
+      interval: 5s
+---
+# Scrape NVIDIA DCGM exporter (GPU utilization, VRAM, power, temp).
+# The exporter is deployed automatically by the NVIDIA GPU Operator into the
+# gpu-operator namespace as a DaemonSet on GPU nodes.
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: nvidia-dcgm-exporter
+  namespace: monitoring
+spec:
+  namespaceSelector:
+    matchNames:
+      - gpu-operator
+  selector:
+    matchLabels:
+      app: nvidia-dcgm-exporter
+  podMetricsEndpoints:
+    - port: metrics
+      path: /metrics
+      interval: 5s

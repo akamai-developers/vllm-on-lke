@@ -1,0 +1,45 @@
+# Helm values for kube-prometheus-stack.
+# Install with:
+#   helm install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
+#     -n monitoring --create-namespace \
+#     -f manifests/monitoring/kube-prometheus-stack-values.yaml
+
+# Watch PodMonitor / ServiceMonitor / PrometheusRule resources in any namespace,
+# not just the chart's release. Lets us drop our own PodMonitors in the
+# monitoring namespace without label gymnastics.
+prometheus:
+  prometheusSpec:
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+    retention: 7d
+
+grafana:
+  # Default admin password. Override for anything other than a local-only demo.
+  adminPassword: "prom-operator"
+
+  # Pre-load the NVIDIA DCGM dashboard. The vLLM dashboard is imported manually
+  # from vLLM's repo (Grafana ID changes between releases — easier to point at
+  # the source-of-truth JSON than pin a specific revision).
+  dashboardProviders:
+    dashboardproviders.yaml:
+      apiVersion: 1
+      providers:
+        - name: 'default'
+          orgId: 1
+          folder: ''
+          type: file
+          disableDeletion: false
+          editable: true
+          options:
+            path: /var/lib/grafana/dashboards/default
+  dashboards:
+    default:
+      nvidia-dcgm:
+        gnetId: 12239
+        revision: 4
+        datasource: Prometheus
+
+# Disable Alertmanager — not needed for a demo, saves resources.
+alertmanager:
+  enabled: false

@@ -1,0 +1,15 @@
+# Block-storage volume for cached model weights.
+# Without this, every pod restart re-downloads the model from Hugging Face (~15GB for 7B).
+# The `-retain` storage class keeps the volume across PVC deletion — flip to `linode-block-storage`
+# if you'd rather it delete with the PVC.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: model-cache
+  namespace: llm
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 50Gi
+  storageClassName: linode-block-storage-retain

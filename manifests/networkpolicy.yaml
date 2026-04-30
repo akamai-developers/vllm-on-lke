@@ -1,0 +1,29 @@
+# Default-deny ingress in the llm namespace. Without this, every pod in the
+# cluster could talk to every other pod. The next policy then explicitly allows
+# traffic to vllm on port 8000 — the LoadBalancer/NodeBalancer source counts as
+# external, so the rule has no `from` selector.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: deny-ingress
+  namespace: llm
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-vllm
+  namespace: llm
+spec:
+  podSelector:
+    matchLabels:
+      app: vllm
+  policyTypes:
+    - Ingress
+  ingress:
+    - ports:
+        - protocol: TCP
+          port: 8000
