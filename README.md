@@ -62,7 +62,7 @@ Two firewalls on purpose: #1 protects the NodeBalancer (the public ingress), #2 
 
 ## Heads up on cost
 
-The GPU node is billed **hourly**. Don't forget to tear it down when you're done — see [Step 9](#9-tear-down).
+The GPU node is [billed](https://www.akamai.com/cloud/pricing) **hourly**. Don't forget to tear it down when you're done — see [Step 9](#9-tear-down).
 
 ---
 
