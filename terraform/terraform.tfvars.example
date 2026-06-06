@@ -1,6 +1,9 @@
 # Copy to terraform.tfvars and edit. terraform.tfvars is gitignored.
+# This file holds infra SIZING. The cluster NAME is set separately via
+# CLUSTER_LABEL in ../.env, so each stack gets a unique, non-colliding name.
 
-cluster_label  = "lke-gpu-demo"
+# Do NOT set cluster_label here — deploy.sh passes it as TF_VAR_cluster_label
+# from .env, and a tfvars value would override (and defeat) that.
 region         = "us-sea"
 k8s_version    = "1.35"
 cpu_node_type  = "g6-standard-2"

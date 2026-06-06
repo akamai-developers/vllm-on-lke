@@ -23,12 +23,13 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-base_url=f"{os.environ['ENDPOINT']}/v1"
-api_key=os.environ["VLLM_API_KEY"]
-
+# ENDPOINT includes the scheme, e.g. http://<loadbalancer-ip> (matches the README
+# and demo scripts). The OpenAI SDK wants the full /v1 base URL.
+endpoint = os.environ["ENDPOINT"].rstrip("/")
+api_key = os.environ["VLLM_API_KEY"]
 
 client = OpenAI(
-    base_url="http://" + base_url,
+    base_url=f"{endpoint}/v1",
     api_key=api_key,
 )
 

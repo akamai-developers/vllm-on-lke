@@ -66,6 +66,36 @@ The GPU node is [billed](https://www.akamai.com/cloud/pricing) **hourly**. Don't
 
 ---
 
+## Quick deploy (one script)
+
+If you just want it running, `./deploy.sh` drives the whole lifecycle below —
+Terraform, kubeconfig, GPU Operator, secret, manifests, the NodeBalancer
+firewall, and the wait for the model to load — and writes the endpoint URL and
+bearer token into `.env` for you.
+
+```bash
+cp .env.examples .env          # set LINODE_TOKEN + a unique CLUSTER_LABEL (HF token only for gated models)
+./deploy.sh                    # stand everything up (~20 min; first run pulls ~15GB)
+./deploy.sh chatbot            # install deps + run the Strands chatbot locally against it
+./deploy.sh destroy            # tear it all down in the correct order
+```
+
+**`CLUSTER_LABEL` names the stack** and must be unique in your Linode account —
+it becomes the LKE cluster name and the `<label>-vllm` firewall name. To run a
+second stack alongside an existing one, just give it a different `CLUSTER_LABEL`;
+`deploy.sh` pre-flights the name and refuses to start if it's already taken
+(so you never get a half-applied, colliding deploy).
+
+`./deploy.sh env` re-pulls `ENDPOINT` + `VLLM_API_KEY` from a running cluster
+into `.env` without redeploying. The script is idempotent — re-running keeps the
+existing `vllm-secrets` token instead of rotating it.
+
+Prefer to understand each piece, or something went sideways? The numbered steps
+below are the canonical walkthrough and the place to debug — `deploy.sh` runs
+exactly them, in order.
+
+---
+
 ## Prerequisites
 
 **Account:**
@@ -99,6 +129,12 @@ The Terraform provider reads it from this env var. **Don't** put it in `tfvars`.
 ```bash
 cd terraform
 cp terraform.tfvars.example terraform.tfvars   # edit if you want different region/instance types
+
+# Name the stack. cluster_label must be UNIQUE in your Linode account — it names
+# the LKE cluster and the "<label>-vllm" firewall. (deploy.sh reads this from
+# CLUSTER_LABEL in .env; on the manual path, set it here.)
+export TF_VAR_cluster_label="my-vllm-stack"
+
 terraform init
 terraform plan                                  # review what's about to be created
 terraform apply
@@ -136,7 +172,7 @@ linode-cli firewalls list
 You should see **two** Cloud Firewalls in your Linode account:
 
 - `lke-<cluster-id>` — created by the controller, attached to all 3 worker nodes.
-- `lke-gpu-demo-vllm` (or whatever you set `cluster_label` to) — created by Terraform, attached to the NodeBalancer once the vLLM Service exists in Step 6.
+- `<your-cluster-label>-vllm` (the name you chose — `CLUSTER_LABEL` in `.env`, or `TF_VAR_cluster_label` on the manual path) — created by Terraform, attached to the NodeBalancer once the vLLM Service exists in Step 6.
 
 ---
 
@@ -258,10 +294,13 @@ curl -s http://$ENDPOINT/v1/chat/completions \
   }' | jq .
 ```
 
-Done — your endpoint is live and OpenAI-compatible. Two Python examples ready to run:
+Done — your endpoint is live and OpenAI-compatible. The Deployment also enables
+OpenAI-style tool/function calling (`--enable-auto-tool-choice --tool-call-parser
+hermes`), so agent frameworks work against it out of the box. Examples ready to run:
 
 - `examples/openai-client.py` — single request, full response (simplest).
 - `examples/openai_streaming_client.py` — streams token-by-token and reports TTFT, total elapsed, tok/s.
+- `examples/chatbot/` — a Streamlit chatbot built on a [Strands](https://strandsagents.com/) agent with tools (`web_search`, `calculator`, `current_time`, `list_lke_clusters`, and a custom `convert_temperature`). You see each tool call — name, args, result — inline. See `examples/chatbot/README.md`.
 
 ---
 
@@ -425,6 +464,7 @@ linode-cli firewalls device-create $FIREWALL_ID --type nodebalancer --id $NB_ID
 
 ## What's next
 
+- **Build an agent on it** — `examples/chatbot/` is a Streamlit + Strands tool-using chatbot that renders its tool calls. The endpoint already has tool calling enabled, so it works as-is.
 - **Run the failure-mode demos** — see `demo/README.md` for `loadgen.py`, `kv_cache_pressure.py`, `apply_bounded.sh`, and `cold_start.sh`.
 - **Swap the model** — edit `--model=` in `manifests/vllm-deployment.yaml`. For gated models, set the HF token (see Step 5).
 - **OpenAI Python SDK** — see `examples/openai-client.py` (simple) and `examples/openai_streaming_client.py` (streams + reports TTFT).

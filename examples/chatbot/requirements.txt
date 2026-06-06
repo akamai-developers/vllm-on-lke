@@ -1,0 +1,8 @@
+# Pinned to versions verified against vLLM's OpenAI-compatible tool-calling API.
+# strands-agents[openai] pulls the `openai` client used by the OpenAI model provider.
+strands-agents[openai]==1.42.0
+strands-agents-tools==0.8.0
+streamlit==1.58.0
+python-dotenv==1.2.2
+ddgs==9.14.4          # web_search tool (no API key)
+requests==2.34.2      # list_lke_clusters tool (Linode API)
