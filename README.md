@@ -63,7 +63,7 @@ You need an account and a set of command-line tools before you begin.
 
 **Account:**
 
-- Create an [Akamai Cloud account](http://login.linode.com/signup?promo=akm-dev-git-300-31126-M055) with an API token. The account includes a $300 credit.
+- Create an [Akamai Cloud account](http://login.linode.com/signup?promo=akm-dev-git-300-72326-P153) with an API token. The account includes a $300 credit.
 
 **Tools:**
 
